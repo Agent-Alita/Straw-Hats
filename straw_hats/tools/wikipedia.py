@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from langchain_core.tools import tool
 
-from ._common import DEFAULT_UA, err, http_session, ok, truncate
+from ._common import DEFAULT_UA, cached_tool, err, http_session, ok, truncate
 
 
 def _search(query: str, limit: int = 5) -> list[dict]:
@@ -57,6 +57,7 @@ def _page_extract(title: str) -> dict | None:
 
 
 @tool
+@cached_tool(ttl_seconds=7 * 24 * 3600)  # 7 days
 def wikipedia_lookup(query: str, results: int = 3) -> dict:
     """Search Wikipedia and return the top page summaries. Use for verifying SF
     historical facts: landmarks, fires, ships, neighborhoods, parks, monuments.

@@ -5,10 +5,11 @@ import os
 
 from langchain_core.tools import tool
 
-from ._common import err, ok
+from ._common import cached_tool, err, ok
 
 
 @tool
+@cached_tool(ttl_seconds=24 * 3600)  # 1 day
 def web_search(query: str, max_results: int = 5) -> dict:
     """Search the web with Tavily for general research (history, landmarks, news,
     treasure-hunt clues). Returns a list of {title, url, snippet} results.

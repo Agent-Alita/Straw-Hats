@@ -6,6 +6,7 @@ from .http_fetch import fetch_url
 from .reddit import reddit_thread
 from .wikipedia import wikipedia_lookup
 from .maps import geocode, reverse_geocode, nearby_search
+from .memory_tools import recall, remember
 # from .vision import analyze_image  # disabled
 
 
@@ -18,6 +19,8 @@ def all_tools() -> list:
         geocode,
         reverse_geocode,
         nearby_search,
+        recall,
+        remember,
         # analyze_image,  # disabled
     ]
 
@@ -30,6 +33,8 @@ __all__ = [
     "geocode",
     "reverse_geocode",
     "nearby_search",
+    "recall",
+    "remember",
     # "analyze_image",  # disabled
     "all_tools",
 ]

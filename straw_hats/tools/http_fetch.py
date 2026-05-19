@@ -4,7 +4,7 @@ from __future__ import annotations
 from langchain_core.tools import tool
 from tenacity import retry, stop_after_attempt, wait_exponential
 
-from ._common import err, http_session, ok, truncate
+from ._common import cached_tool, err, http_session, ok, truncate
 
 
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=1, max=8), reraise=True)
@@ -45,6 +45,7 @@ def _extract(html: str, url: str) -> tuple[str, str | None]:
 
 
 @tool
+@cached_tool(ttl_seconds=7 * 24 * 3600)  # 7 days
 def fetch_url(url: str) -> dict:
     """Fetch a web page and return its readable text content + title. Use for
     articles, blog posts, news, image-host pages, etc. Returns truncated text.

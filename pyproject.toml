@@ -8,6 +8,7 @@ authors = [{ name = "anomalyco" }]
 license = { text = "MIT" }
 dependencies = [
     "langgraph>=0.2.50",
+    "langgraph-checkpoint-sqlite>=2.0.0",
     "langchain>=0.3.0",
     "langchain-core>=0.3.0",
     "langchain-openai>=0.2.0",
@@ -28,6 +29,11 @@ dependencies = [
 
 [project.scripts]
 straw-hats = "straw_hats.cli:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+]
 
 [build-system]
 requires = ["hatchling"]

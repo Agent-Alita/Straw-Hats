@@ -4,7 +4,7 @@ from __future__ import annotations
 from langchain_core.tools import tool
 from tenacity import retry, stop_after_attempt, wait_exponential
 
-from ._common import RateLimiter, err, http_session, ok
+from ._common import RateLimiter, cached_tool, err, http_session, ok
 
 
 # Nominatim usage policy: max 1 req/sec
@@ -49,6 +49,7 @@ def _format_result(item: dict) -> dict:
 
 
 @tool
+@cached_tool(ttl_seconds=30 * 24 * 3600)  # 30 days
 def geocode(query: str, limit: int = 5) -> dict:
     """Forward-geocode an address, place name, or landmark, biased to San Francisco.
     Returns up to `limit` candidates with lat/lng and a display name.
@@ -82,6 +83,7 @@ def geocode(query: str, limit: int = 5) -> dict:
 
 
 @tool
+@cached_tool(ttl_seconds=30 * 24 * 3600)  # 30 days
 def reverse_geocode(lat: float, lng: float) -> dict:
     """Reverse-geocode a coordinate to a street address / place description.
 
@@ -115,6 +117,7 @@ def _bbox_around(lat: float, lng: float, radius_m: float) -> str:
 
 
 @tool
+@cached_tool(ttl_seconds=30 * 24 * 3600)  # 30 days
 def nearby_search(lat: float, lng: float, query: str, radius_m: int = 400) -> dict:
     """Search for points of interest near a coordinate (within radius_m meters).
     Use to refine a neighborhood guess to a specific bench, statue, plaque, tree,

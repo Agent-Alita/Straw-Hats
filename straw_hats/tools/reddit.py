@@ -7,7 +7,7 @@ from urllib.parse import urlparse
 from langchain_core.tools import tool
 from tenacity import retry, stop_after_attempt, wait_exponential
 
-from ._common import RateLimiter, err, http_session, ok, truncate
+from ._common import RateLimiter, cached_tool, err, http_session, ok, truncate
 
 
 _LIMITER = RateLimiter(min_interval_s=2.0)
@@ -77,6 +77,7 @@ def _walk_comments(children: list, out: list, max_items: int) -> None:
 
 
 @tool
+@cached_tool(ttl_seconds=6 * 3600)  # 6 hours
 def reddit_thread(url: str, max_comments: int = 40) -> dict:
     """Fetch a Reddit thread anonymously. Returns the OP (title + body), top comments
     sorted by score, and all outbound links found in the discussion.

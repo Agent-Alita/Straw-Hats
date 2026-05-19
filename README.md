@@ -16,6 +16,7 @@ The agent has a tool belt for the kinds of research a human treasure hunter woul
 | `wikipedia_lookup` | Verify SF historical facts (parks, ships, fires, landmarks) |
 | `geocode` / `reverse_geocode` | Forward / reverse geocoding via OpenStreetMap (Nominatim), SF-biased |
 | `nearby_search` | Find specific POIs (benches, plaques, statues, fountains, murals) near a point |
+| `recall` / `remember` | Read / write long-term insights that persist across hunts |
 | `analyze_image` *(disabled)* | Vision tool, currently commented out in the registry |
 
 The agent loop is a `langgraph.prebuilt.create_react_agent` so Claude picks tools
@@ -83,6 +84,10 @@ CLI flags:
 | `--json FILE` | Write structured JSON answer (optional) |
 | `--max-turns N` | Cap on agent tool-call turns (default 30) |
 | `--quiet` | Suppress streaming trace |
+| `--session ID` | Override the auto-derived session id (default: `sha256(poem+url)[:12]`) |
+| `--no-resume` | Start fresh even if a prior checkpoint exists for this session |
+| `--no-cache` | Bypass the tool-call result cache for this run |
+| `--no-memory` | Disable ALL persistence (checkpointer, cache, store, archive) |
 
 ## Configuration (`.env`)
 
@@ -102,18 +107,53 @@ which speaks any OpenAI-shaped `/v1/chat/completions` endpoint.
 
 ```
 straw_hats/
-├── cli.py        # Typer CLI; loads .env, runs agent, renders report
+├── cli.py        # Typer CLI; hunt + history/show/forget/facts/cache subcommands
 ├── agent.py      # LangGraph ReAct loop + streaming + final-answer parser
+├── memory.py     # Cross-session memory: checkpointer, tool-cache, fact store, archive
 ├── llm.py        # TokenRouter-backed ChatOpenAI factory
 ├── prompts.py    # System prompt + initial user message template
 ├── schemas.py    # Pydantic models (FinalAnswer, Candidate, ToolResult)
 └── tools/
-    ├── web_search.py    # Tavily
-    ├── http_fetch.py    # requests + trafilatura + BeautifulSoup
-    ├── reddit.py        # anonymous reddit.json crawler
-    ├── wikipedia.py     # Wikipedia API + REST summary fallback
-    ├── maps.py          # Nominatim geocode / reverse / POI (SF-biased, 1 req/sec)
+    ├── web_search.py    # Tavily (cached)
+    ├── http_fetch.py    # requests + trafilatura + BeautifulSoup (cached)
+    ├── reddit.py        # anonymous reddit.json crawler (cached)
+    ├── wikipedia.py     # Wikipedia API + REST summary fallback (cached)
+    ├── maps.py          # Nominatim geocode / reverse / POI (SF-biased, 1 req/sec, cached)
+    ├── memory_tools.py  # recall / remember — long-term semantic memory
     └── vision.py        # Claude vision via TokenRouter (disabled in registry)
+```
+
+## Cross-Session Memory
+
+All persistence lives under `./.straw_hats/` (gitignored), backed by SQLite:
+
+| Layer | Purpose | TTL |
+|---|---|---|
+| **Checkpointer** (`checkpoints.sqlite`) | Resume an interrupted hunt mid-turn — every message + tool call/result is saved per session. | until `forget` |
+| **Tool-call cache** (`tool_cache` table) | Skip re-hitting external APIs for identical args. Keys are normalized (lowercase + whitespace-stripped). | 6 h (reddit) → 30 d (geocode); see decorator args |
+| **Fact store** (`store` table) | The agent can call `remember(fact, tags)` to keep durable insights across hunts; future runs call `recall(query)` to retrieve them. | forever; cap ~5 writes/run |
+| **Hunt archive** (`hunts` table) | Final JSON + markdown report for every completed hunt, listable/inspectable from the CLI. | forever |
+
+Session ids are auto-derived from `sha256(normalized_poem + normalized_reddit_url)[:12]`,
+so re-running with the same inputs resumes the same thread. Override with `--session`.
+
+### Memory CLI
+
+```bash
+uv run straw-hats history                 # list recent hunts
+uv run straw-hats show <session_id>       # print archived report + JSON
+uv run straw-hats forget <session_id>     # drop checkpoint + archive (keeps cache + facts)
+uv run straw-hats facts                   # list remembered facts
+uv run straw-hats facts -q "coit tower"   # search facts by keyword
+uv run straw-hats facts --delete <id>     # remove a fact
+uv run straw-hats cache                   # cache stats
+uv run straw-hats cache --purge-expired   # drop expired rows
+uv run straw-hats cache --clear-all       # wipe the cache
+```
+
+Override the memory dir for testing/sandboxing:
+```bash
+STRAW_HATS_MEMORY_DIR=/tmp/scratch uv run straw-hats hunt ...
 ```
 
 ## Notes & Limits
